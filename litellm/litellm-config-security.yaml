@@ -12,11 +12,11 @@ model_list:
     # Model-specific security settings
     litellm_settings:
       callbacks: ["detect_prompt_injection"] # , "hide_secrets" - Licensed feature
-      cache: true
-      cache_params:
-        ttl: 7200  # 2h for primary model
-        namespace: "llmops:cache:primary"
-        similarity_threshold: 0.90  # Stricter threshold for primary model
+      cache: false  # Disable model-specific caching
+      # cache_params:
+      #   ttl: 7200  # 2h for primary model
+      #   namespace: "llmops:cache:primary"
+      #   similarity_threshold: 0.90  # Stricter threshold for primary model
       
   # Backup Groq model with standard Groq provider
   - model_name: groq-llama-backup
@@ -45,20 +45,21 @@ litellm_settings:
   callbacks: ["mlflow", "detect_prompt_injection"] # , "hide_secrets" - Licensed feature
   set_verbose: true  # Turn off debug logging for production
   
-  # Enable Redis caching
+  # Enable Redis caching with semantic capabilities
   cache: true
   cache_params:
     type: redis
     host: redis  # Docker service name
     port: 6379
-    password: ${REDIS_PASSWORD}
-    namespace: "llmops:cache:v1"
-    ttl: 3600  # 1 hour default TTL
+    password: RedisPass123!
+    db: 0
+    namespace: "litellm:semantic:v1"
+    ttl: 1800  # 30 minutes default TTL
     
-    # Advanced semantic caching configuration
+    # Semantic caching configuration
     redis_semantic_cache_embedding_model: "text-embedding-ada-002"
     similarity_threshold: 0.85
-    redis_semantic_cache_index_name: "llmops_semantic_index"
+    redis_semantic_cache_index_name: "litellm_semantic_index"
   
   # Built-in Prompt Injection Detection
   prompt_injection_params:
@@ -66,82 +67,13 @@ litellm_settings:
     similarity_check: true           # Compare against known attacks
     vector_db_check: false          # Disable for performance
     
-  # Content moderation settings - Licensed feature
-  # content_moderation: true
-  # content_moderation_threshold: 0.7
-  
-  # Rate limiting at proxy level - Licensed feature
-  # rate_limit:
-  #   rpm: 100                        # Requests per minute
-  #   tpm: 10000                      # Tokens per minute
 
-# Modern Guardrails Configuration (2025) - Most are Licensed features
-# guardrails:
-#   # Primary Security Guard - Prompt Injection Protection - Licensed feature
-#   - guardrail_name: "prompt-injection-guard"
-#     litellm_params:
-#       guardrail: "lakera_prompt_injection"  # Use Lakera if available - Licensed feature
-#       mode: ["pre_call"]
-#       default_on: true
-#       callback_args:
-#         lakera_prompt_injection:
-#           category_thresholds:
-#             "prompt_injection": 0.1
-#             "jailbreak": 0.1
-#           moderation_check: "pre_call"
-#     fallback:
-#       # Fallback to built-in detection if Lakera unavailable
-#       guardrail: "detect_prompt_injection"
-#       
-#   # Secrets Detection and Hiding - Licensed feature
-#   - guardrail_name: "secrets-protection"
-#     litellm_params:
-#       guardrail: "hide_secrets"  # Licensed feature
-#       mode: ["pre_call", "post_call"]
-#       default_on: true
-#       
-#   # PII Detection and Masking - Licensed feature
-#   - guardrail_name: "pii-protection"
-#     litellm_params:
-#       guardrail: "presidio"  # Licensed feature
-#       mode: ["post_call"]
-#       default_on: false
-#       logging_only: true              # Only log, don't block
-#       callback_args:
-#         presidio:
-#           entities: ["PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER", "CREDIT_CARD"]
-#           threshold: 0.8
-#           
-#   # Content Moderation with LLMGuard - Licensed feature
-#   - guardrail_name: "content-moderation"
-#     litellm_params:
-#       guardrail: "llmguard_moderations"  # Licensed feature
-#       mode: ["pre_call", "post_call"]
-#       default_on: false               # Enable as needed
-#       callback_args:
-#         llmguard_moderations:
-#           api_base: "http://localhost:8001"  # LLMGuard service URL
-#           
-#   # Llamaguard for additional protection - Licensed feature
-#   - guardrail_name: "llama-guard"
-#     litellm_params:
-#       guardrail: "llamaguard_moderations"  # Licensed feature
-#       mode: ["pre_call", "post_call"]
-#       default_on: false
-#       callback_args:
-#         llamaguard_moderations:
-#           model_name: "meta-llama/LlamaGuard-7b"
 
 # Router Configuration with Security
 router_settings:
   fallbacks:
     - "groq-kimi-primary": ["groq-llama-backup", "gpt-4o-secondary", "gemini-third", "openrouter-fallback"]
-  
-  # Security policies - Licensed features
-  # security_settings:
-  #   max_budget_per_user: 100.0      # USD budget limit - Licensed feature
-  #   budget_duration: "1d"           # Daily budget reset - Licensed feature
-  #   max_requests_per_user: 1000     # Request limit per user - Licensed feature
+
     
 # Callback Settings
 callback_settings:
@@ -149,30 +81,3 @@ callback_settings:
     experiment_name: "llmops-litellm-security"
     tracking_uri: "http://mlflow:5000"
     
-  # Lakera settings (if using Lakera guardrails) - Licensed feature
-  # lakera_prompt_injection:
-  #   api_key: os.environ/LAKERA_API_KEY
-  #   api_base: "https://api.lakera.ai"
-    
-  # Presidio settings (if using PII detection) - Licensed feature
-  # presidio:
-  #   api_base: "http://localhost:5002"  # Presidio service URL
-    
-  # Custom logging for security events - Licensed feature
-  # security_logging:
-  #   log_file: "/var/log/litellm-security.log"
-  #   log_level: "WARNING"
-  #   include_request_data: true
-
-# Enterprise Security Features - All Licensed features
-# enterprise_settings:
-#   enable_secret_detection: true    # Licensed feature
-#   enable_audit_logging: true       # Licensed feature
-#   enable_compliance_mode: true     # Licensed feature
-#   data_retention_days: 90          # Licensed feature
-
-# Health Check and Monitoring - Licensed features
-# health_check:
-#   enabled: true                    # Licensed feature
-#   endpoint: "/health/security"     # Licensed feature
-#   include_guardrails_status: true  # Licensed feature

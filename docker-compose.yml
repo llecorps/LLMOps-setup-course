@@ -33,10 +33,10 @@ services:
     volumes:
       - .:/app
       - ./mlflow-data:/mlflow-data
-    working_dir: /app
+    working_dir: /app/src/api
     networks:
       - llmops-network
-    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    command: ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
     # Health check
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -59,7 +59,7 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - LITELLM_LOG=${LITELLM_LOG}
       # Redis configuration
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-""}
+      - REDIS_PASSWORD=RedisPass123!
       # MLflow configuration for native tracing
       - MLFLOW_TRACKING_URI=http://mlflow:5000
       - MLFLOW_EXPERIMENT_NAME=llmops-litellm-security
