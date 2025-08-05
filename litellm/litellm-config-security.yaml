@@ -12,6 +12,11 @@ model_list:
     # Model-specific security settings
     litellm_settings:
       callbacks: ["detect_prompt_injection"] # , "hide_secrets" - Licensed feature
+      cache: true
+      cache_params:
+        ttl: 7200  # 2h for primary model
+        namespace: "llmops:cache:primary"
+        similarity_threshold: 0.90  # Stricter threshold for primary model
       
   # Backup Groq model with standard Groq provider
   - model_name: groq-llama-backup
@@ -39,6 +44,21 @@ model_list:
 litellm_settings:
   callbacks: ["mlflow", "detect_prompt_injection"] # , "hide_secrets" - Licensed feature
   set_verbose: true  # Turn off debug logging for production
+  
+  # Enable Redis caching
+  cache: true
+  cache_params:
+    type: redis
+    host: redis  # Docker service name
+    port: 6379
+    password: ${REDIS_PASSWORD}
+    namespace: "llmops:cache:v1"
+    ttl: 3600  # 1 hour default TTL
+    
+    # Advanced semantic caching configuration
+    redis_semantic_cache_embedding_model: "text-embedding-ada-002"
+    similarity_threshold: 0.85
+    redis_semantic_cache_index_name: "llmops_semantic_index"
   
   # Built-in Prompt Injection Detection
   prompt_injection_params:
