@@ -62,6 +62,20 @@ def create_app() -> FastAPI:
             "timestamp": datetime.now()
         }
 
+    # Add OpenAI-compatible endpoint at root level
+    @app.get("/v1/models")
+    async def v1_models():
+        """OpenAI-compatible models endpoint at root level."""
+        try:
+            import requests
+            from config.settings import settings
+            response = requests.get(f"{settings.LITELLM_URL}/models")
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=500, detail=f"Error fetching models: {e}")
+
     # Include routers
     app.include_router(auth_router)
     app.include_router(llm_router)

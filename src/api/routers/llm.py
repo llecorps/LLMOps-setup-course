@@ -217,6 +217,13 @@ async def list_models():
         raise HTTPException(status_code=500, detail=f"Error fetching models: {e}")
 
 
+# Add OpenAI-compatible v1 endpoints
+@router.get("/v1/models", response_model=ModelsResponse)
+async def list_models_v1():
+    """OpenAI-compatible models endpoint for better API compatibility."""
+    return await list_models()
+
+
 @router.get("/health")
 async def llm_health():
     """LLM service health check."""

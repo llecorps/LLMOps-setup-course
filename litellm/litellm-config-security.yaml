@@ -68,7 +68,6 @@ litellm_settings:
     vector_db_check: false          # Disable for performance
     
 
-
 # Router Configuration with Security
 router_settings:
   fallbacks:
