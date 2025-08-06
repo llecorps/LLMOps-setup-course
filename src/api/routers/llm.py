@@ -170,8 +170,19 @@ async def generate_secure_prompt(
         end_time = time.time()
         response_time = end_time - start_time
         
+        # Determine cache status and cache latency
+        cache_hit = cached_response is not None
+        cache_latency_ms = None
+        cache_type = None
         
-        # Trace in MLflow
+        if cached_response:
+            cache_latency_ms = response_time * 1000  # Convert to milliseconds
+            if 'semantic_result' in locals() and semantic_result:
+                cache_type = "semantic"
+            else:
+                cache_type = "exact"
+        
+        # Trace in MLflow with cache information
         try:
             mlflow_service.trace_llm_request(
                 prompt=request.prompt,
@@ -183,7 +194,10 @@ async def generate_secure_prompt(
                     "total_tokens": total_tokens
                 },
                 cost=cost,
-                start_time=start_time
+                start_time=start_time,
+                cache_hit=cache_hit,
+                cache_latency_ms=cache_latency_ms,
+                cache_type=cache_type
             )
         except Exception as trace_error:
             print(f"Warning: Could not trace LLM request: {trace_error}")

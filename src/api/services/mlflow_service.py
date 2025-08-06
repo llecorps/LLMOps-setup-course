@@ -100,7 +100,7 @@ class MLflowService:
             return False
 
     @mlflow.trace(name="llm_generation", span_type=SpanType.LLM)
-    def trace_llm_request(self, prompt: str, model: str, response: str, tokens: dict, cost: float, start_time: float, cache_hit: bool = False, cache_latency_ms: Optional[float] = None):
+    def trace_llm_request(self, prompt: str, model: str, response: str, tokens: dict, cost: float, start_time: float, cache_hit: bool = False, cache_latency_ms: Optional[float] = None, cache_type: Optional[str] = None):
         """Trace LLM generation requests with improved timing and cache awareness."""
         try:
             print(f"🔍 Starting MLflow trace for model: {model}")
@@ -137,7 +137,9 @@ class MLflowService:
                     "cost": cost,
                     "latency_ms": duration_ms,
                     "cache_hit": cache_hit,
-                    "cache_latency_ms": cache_latency_ms if cache_hit else None
+                    "cache_type": cache_type if cache_hit else None,
+                    "cache_latency_ms": cache_latency_ms if cache_hit else None,
+                    "llm_latency_ms": None if cache_hit else duration_ms
                 })
                 
                 # Set parent span attributes
@@ -150,7 +152,10 @@ class MLflowService:
                     "llm.latency_ms": duration_ms,
                     "cache.enabled": True,
                     "cache.hit": cache_hit,
+                    "cache.type": cache_type if cache_hit else "none",
                     "cache.latency_ms": cache_latency_ms if cache_hit else None,
+                    "llm.actual_latency_ms": None if cache_hit else duration_ms,
+                    "performance.cache_speedup": f"{((2000 - cache_latency_ms) / 2000 * 100):.1f}%" if cache_hit and cache_latency_ms else None,
                     "mlflow.spanType": "LLM"
                 })
                 
@@ -193,15 +198,30 @@ class MLflowService:
                         "duration_ms": duration_ms * 0.1
                     })
                 
+                # Add cache-specific event if hit occurred
+                if cache_hit:
+                    current_span.add_event(SpanEvent(
+                        f"Cache Hit - {cache_type.title()}",
+                        attributes={
+                            "cache_type": cache_type,
+                            "cache_latency_ms": cache_latency_ms,
+                            "speedup_percentage": f"{((2000 - cache_latency_ms) / 2000 * 100):.1f}%" if cache_latency_ms else "N/A",
+                            "estimated_llm_latency_ms": 2000,
+                            "actual_latency_ms": cache_latency_ms,
+                            "timestamp": datetime.fromtimestamp(current_time).isoformat()
+                        }
+                    ))
+                
                 # Add timing event
                 current_span.add_event(SpanEvent(
                     "timing_breakdown",
                     attributes={
                         "validation_ms": duration_ms * 0.1,
                         "cache_ms": duration_ms * 0.2,
-                        "processing_ms": duration_ms * 0.6,
+                        "processing_ms": 0 if cache_hit else duration_ms * 0.6,
                         "formatting_ms": duration_ms * 0.1,
                         "total_ms": duration_ms,
+                        "cache_hit": cache_hit,
                         "timestamp": datetime.fromtimestamp(current_time).isoformat()
                     }
                 ))
