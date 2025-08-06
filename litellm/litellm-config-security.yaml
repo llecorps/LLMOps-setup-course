@@ -1,5 +1,5 @@
-# LiteLLM Proxy Configuration with Comprehensive Security (2025)
-# Based on latest LiteLLM security capabilities research
+# LiteLLM Configuration with Semantic Cache
+# Using a custom OpenAI provider to wrap the Hugging Face embedding model.
 
 model_list:
   # Primary models with security guardrails
@@ -9,14 +9,8 @@ model_list:
       api_key: os.environ/GROQ_API_KEY
       api_base: https://api.groq.com/openai/v1
       custom_llm_provider: openai
-    # Model-specific security settings
     litellm_settings:
-      callbacks: ["detect_prompt_injection"] # , "hide_secrets" - Licensed feature
-      cache: false  # Disable model-specific caching
-      # cache_params:
-      #   ttl: 7200  # 2h for primary model
-      #   namespace: "llmops:cache:primary"
-      #   similarity_threshold: 0.90  # Stricter threshold for primary model
+      callbacks: ["detect_prompt_injection"]
       
   # Backup Groq model with standard Groq provider
   - model_name: groq-llama-backup
@@ -39,44 +33,44 @@ model_list:
     litellm_params:
       model: openrouter/mistralai/mistral-7b-instruct:free
       api_key: os.environ/OPENROUTER_API_KEY
+      
+  # Embedding model pour cache sémantique (TEI avec OpenAI provider)
+  - model_name: local-embed-model
+    litellm_params:
+      model: openai/text-embedding-ada-002  # Utilise le format OpenAI pour compatibilité
+      api_key: "dummy-key"  # TEI ne nécessite pas de vraie clé
+      api_base: "http://tei-embeddings:80"
 
-# Global Security Settings
+# Cache sémantique LiteLLM via Qdrant
 litellm_settings:
-  callbacks: ["mlflow", "detect_prompt_injection"] # , "hide_secrets" - Licensed feature
-  set_verbose: true  # Turn off debug logging for production
-  
-  # Enable Redis caching with semantic capabilities
+  callbacks: ["mlflow", "detect_prompt_injection"]
+  set_verbose: true
   cache: true
   cache_params:
-    type: redis
-    host: redis  # Docker service name
-    port: 6379
-    password: RedisPass123!
-    db: 0
-    namespace: "litellm:semantic:v1"
-    ttl: 1800  # 30 minutes default TTL
-    
-    # Semantic caching configuration
-    redis_semantic_cache_embedding_model: "text-embedding-ada-002"
-    similarity_threshold: 0.85
-    redis_semantic_cache_index_name: "litellm_semantic_index"
-  
-  # Built-in Prompt Injection Detection
-  prompt_injection_params:
-    heuristics_check: true           # Fast pattern matching
-    similarity_check: true           # Compare against known attacks
-    vector_db_check: false          # Disable for performance
-    
+    type: "qdrant-semantic"
+    # Configuration Qdrant
+    qdrant_api_base: "http://qdrant:6333"
+    qdrant_api_key: ""
+    qdrant_collection_name: "litellm_semantic_cache"  # Collection séparée pour LiteLLM
+    # Paramètres sémantiques
+    similarity_threshold: 0.7  # Baissé pour plus de sensibilité
+    qdrant_semantic_cache_embedding_model: local-embed-model  # Référence au model_name défini ci-dessus
+    qdrant_quantization_config: "binary"
+    ttl: 1800
+
+# Built-in Prompt Injection Detection
+prompt_injection_params:
+  heuristics_check: true
+  similarity_check: true
+  vector_db_check: false
 
 # Router Configuration with Security
 router_settings:
   fallbacks:
     - "groq-kimi-primary": ["groq-llama-backup", "gpt-4o-secondary", "gemini-third", "openrouter-fallback"]
-
     
 # Callback Settings
 callback_settings:
   mlflow:
-    experiment_name: "llmops-litellm-security"
+    experiment_name: "llmops-qdrant-only-cache"
     tracking_uri: "http://mlflow:5000"
-    

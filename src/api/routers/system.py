@@ -7,7 +7,6 @@ from fastapi import APIRouter
 from config.settings import settings, SecurityConfig
 from services.security_service import security_metrics
 from services.mlflow_service import mlflow_service
-from services.cache_service import cache_service
 
 router = APIRouter(prefix="/system", tags=["system"]) 
 
@@ -105,32 +104,35 @@ async def security_metrics_endpoint():
 
 @router.get("/cache-metrics")
 async def get_cache_metrics():
-    """Get Redis cache performance metrics."""
-    current_time = datetime.now()
-    uptime_seconds = (current_time - cache_service.metrics["start_time"]).total_seconds()
+    """Get Qdrant cache performance metrics. Redirects to LLM cache stats."""
+    import httpx
     
-    # Calculate hit rate
-    total_requests = cache_service.metrics["hits"] + cache_service.metrics["misses"]
-    hit_rate = (cache_service.metrics["hits"] / total_requests * 100) if total_requests > 0 else 0
-    
-    return {
-        "overview": {
-            "total_requests": total_requests,
-            "hit_rate_percentage": round(hit_rate, 2),
-            "cost_saved": round(cache_service.metrics["cost_saved"], 4)
-        },
-        "detailed_metrics": {
-            "hits": cache_service.metrics["hits"],
-            "misses": cache_service.metrics["misses"],
-            "errors": cache_service.metrics["errors"]
-        },
-        "system_status": {
-            "uptime_seconds": round(uptime_seconds),
-            "uptime_hours": round(uptime_seconds / 3600, 2),
-            "start_time": cache_service.metrics["start_time"].isoformat()
-        },
-        "timestamp": current_time.isoformat()
-    }
+    try:
+        # Redirect to the new cache stats endpoint
+        async with httpx.AsyncClient() as client:
+            response = await client.get("http://localhost:8000/llm/cache/stats")
+            if response.status_code == 200:
+                cache_data = response.json()
+                return {
+                    "message": "Cache metrics moved to /llm/cache/stats",
+                    "redirect_url": "/llm/cache/stats",
+                    "cache_data": cache_data,
+                    "timestamp": datetime.now().isoformat()
+                }
+            else:
+                return {
+                    "message": "Cache metrics available at /llm/cache/stats",
+                    "redirect_url": "/llm/cache/stats",
+                    "status": "Cache service may not be ready",
+                    "timestamp": datetime.now().isoformat()
+                }
+    except Exception as e:
+        return {
+            "message": "Cache metrics moved to /llm/cache/stats",
+            "redirect_url": "/llm/cache/stats",
+            "error": f"Could not fetch cache data: {e}",
+            "timestamp": datetime.now().isoformat()
+        }
 
 
 @router.get("/security-incidents")

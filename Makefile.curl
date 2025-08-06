@@ -46,6 +46,34 @@ test-api-semantic-2:
 # HELP
 # -----------------------------------------------------------------------------
 
+test-api-semantic-3:
+	@echo "🔍 Testing semantic cache with new prompt (3/4)..."
+	@TOKEN=$$(curl -s -X POST http://localhost:8000/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"username": "admin", "password": "secret123"}' \
+		| jq -r '.access_token'); \
+	curl -X POST http://localhost:8000/llm/generate \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $$TOKEN" \
+		-d '{"model": "groq-kimi-primary", "prompt": "Peux-tu me faire un résumé de l'\''intrigue du film Inception ?", "max_tokens": 150}' \
+		| jq -C '.'
+
+test-api-semantic-4:
+	@echo "🔍 Testing semantic cache with similar prompt (4/4)..."
+	@TOKEN=$$(curl -s -X POST http://localhost:8000/auth/login \
+		-H "Content-Type: application/json" \
+		-d '{"username": "admin", "password": "secret123"}' \
+		| jq -r '.access_token'); \
+	curl -X POST http://localhost:8000/llm/generate \
+		-H "Content-Type: application/json" \
+		-H "Authorization: Bearer $$TOKEN" \
+		-d '{"model": "groq-kimi-primary", "prompt": "Fais un bref synopsis du film Inception de Christopher Nolan.", "max_tokens": 150}' \
+		| jq -C '.'
+
+# -----------------------------------------------------------------------------
+# HELP
+# -----------------------------------------------------------------------------
+
 help:
 	@echo "API Testing Commands:"
 	@echo ""

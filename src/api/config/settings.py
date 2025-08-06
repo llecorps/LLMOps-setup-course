@@ -64,11 +64,10 @@ class Settings:
     JWT_ALGORITHM: str = JWT_ALGORITHM
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = JWT_ACCESS_TOKEN_EXPIRE_MINUTES
     
-    # Redis Settings
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "redis")
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "")
-    CACHE_TTL: int = int(os.getenv("CACHE_TTL", "3600"))  # 1 hour default
+    # Qdrant Settings
+    QDRANT_URL: str = os.getenv("QDRANT_URL", "http://qdrant:6333")
+    TEI_URL: str = os.getenv("TEI_URL", "http://tei-embeddings:80")
+    CACHE_TTL: int = int(os.getenv("CACHE_TTL", "1800"))  # 30 minutes default
 
 # Security Configuration
 class SecurityConfig:

@@ -103,9 +103,15 @@ class MLflowService:
     def trace_llm_request(self, prompt: str, model: str, response: str, tokens: dict, cost: float, start_time: float, cache_hit: bool = False, cache_latency_ms: Optional[float] = None):
         """Trace LLM generation requests with improved timing and cache awareness."""
         try:
+            print(f"🔍 Starting MLflow trace for model: {model}")
+            print(f"🔍 MLflow tracking URI: {self.tracking_uri}")
+            print(f"🔍 Current experiment: {self.experiment_name}")
+            
             current_span = mlflow.get_current_active_span()
             current_time = time.time()
             duration_ms = (current_time - start_time) * 1000
+            
+            print(f"🔍 Current span: {current_span}")
             
             if current_span:
                 # Set parent span inputs

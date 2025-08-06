@@ -4,7 +4,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from services.mlflow_service import mlflow_service
-from services.cache_service import cache_service
 
 
 @asynccontextmanager
@@ -16,9 +15,8 @@ async def lifespan(app: FastAPI):
     await mlflow_service.setup_experiment()
     print("MLflow experiment setup completed")
     
-    # Setup Redis cache
-    await cache_service.initialize()
-    print("Redis cache service initialized")
+    # Cache is now handled directly in the LLM router with Qdrant
+    print("Qdrant semantic cache initialized in LLM router")
     
     yield
     
