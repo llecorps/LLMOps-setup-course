@@ -37,7 +37,7 @@ model_list:
   # Embedding model pour cache sémantique (TEI avec OpenAI provider)
   - model_name: local-embed-model
     litellm_params:
-      model: openai/text-embedding-ada-002  # Utilise le format OpenAI pour compatibilité
+      model: openai/text-embedding-ada-002  # Pour utiliser le format OpenAI pour compatibilité
       api_key: "dummy-key"  # TEI ne nécessite pas de vraie clé
       api_base: "http://tei-embeddings:80"
 
