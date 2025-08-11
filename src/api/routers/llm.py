@@ -30,11 +30,12 @@ client = openai.OpenAI(
 # Initialize semantic cache
 cache = SemanticCache(
     qdrant_url=settings.QDRANT_URL,
-    tei_url=settings.TEI_URL,
+    litellm_url=settings.LITELLM_URL,
     exact_similarity_threshold=1.0,
     semantic_similarity_threshold=0.70,  # Réduit temporairement pour test
     embedding_dimension=384,  # all-MiniLM-L6-v2
-    ttl_seconds=1800
+    ttl_seconds=1800,
+    embedding_model="local-embed-model",
 )
 
 

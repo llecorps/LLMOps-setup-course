@@ -44,8 +44,7 @@ model_list:
 # Cache sémantique LiteLLM via Qdrant
 litellm_settings:
   callbacks: ["mlflow", "detect_prompt_injection"]
-  set_verbose: true
-  cache: true
+  cache: false
   cache_params:
     type: "qdrant-semantic"
     # Configuration Qdrant

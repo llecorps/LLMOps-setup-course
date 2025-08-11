@@ -35,18 +35,20 @@ class SemanticCache:
     def __init__(
         self,
         qdrant_url: str = "http://localhost:6333",
-        tei_url: str = "http://localhost:8080",
+        litellm_url: str = "http://localhost:4000",
         exact_similarity_threshold: float = 1.0,  # Exact match
         semantic_similarity_threshold: float = 0.85,
         embedding_dimension: int = 384,  # all-MiniLM-L6-v2 dimension
-        ttl_seconds: int = 1800
+        ttl_seconds: int = 1800,
+        embedding_model: str = "local-embed-model",
     ):
         self.qdrant_client = QdrantClient(url=qdrant_url)
-        self.tei_url = tei_url
+        self.litellm_url = litellm_url
         self.exact_threshold = exact_similarity_threshold
         self.semantic_threshold = semantic_similarity_threshold
         self.embedding_dim = embedding_dimension
         self.ttl = ttl_seconds
+        self.embedding_model = embedding_model
         
         # Collection names
         self.exact_collection = "exact_cache"
@@ -93,17 +95,24 @@ class SemanticCache:
             return False
     
     async def _get_embedding(self, text: str) -> List[float]:
-        """Get embedding from TEI server"""
+        """Get embedding via LiteLLM OpenAI-compatible embeddings endpoint"""
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.post(
-                    f"{self.tei_url}/embed",
-                    json={"inputs": text},
-                    timeout=30.0
+                    f"{self.litellm_url}/v1/embeddings",
+                    json={
+                        "input": text,
+                        "model": self.embedding_model,
+                        # Disable LiteLLM proxy semantic caching for embeddings
+                        # (its qdrant-semantic cache expects 'messages' from chat requests)
+                        "caching": False,
+                    },
+                    timeout=30.0,
                 )
                 response.raise_for_status()
-                embeddings = response.json()
-                return embeddings[0]  # TEI returns list of embeddings
+                data = response.json()
+                # OpenAI-compatible format returned by LiteLLM
+                return data["data"][0]["embedding"]
         except Exception as e:
             logger.error(f"Failed to get embedding: {e}")
             raise

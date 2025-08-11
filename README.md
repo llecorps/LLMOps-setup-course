@@ -24,7 +24,7 @@ graph TB
     
     subgraph "🔍 Semantic Cache"
         Cache --> TEI[📝 Text Embeddings]
-        TEI --> Qdrant[🗄️ Vector Database]
+        Cache <--> Qdrant[🗄️ Vector Database]
     end
     
     subgraph "📊 Observability"
