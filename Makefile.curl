@@ -25,7 +25,7 @@ test-exact-cache:
 	@curl -s -X POST http://localhost:8000/llm/generate \
 		-H "Content-Type: application/json" \
 		-H "Authorization: Bearer $(TOKEN)" \
-		-d '{"model": "groq-kimi-primary", "prompt": "What is 2+2?", "max_tokens": 10}' \
+		-d '{"model": "groq-kimi-primary", "prompt": "Why the sky is blue?", "max_tokens": 10}' \
 		| jq -C '.'
 	@echo ""
 	@echo "🎯 Test 2: Second call (exact cache hit expected)"
@@ -33,7 +33,7 @@ test-exact-cache:
 	@curl -s -X POST http://localhost:8000/llm/generate \
 		-H "Content-Type: application/json" \
 		-H "Authorization: Bearer $(TOKEN)" \
-		-d '{"model": "groq-kimi-primary", "prompt": "What is 2+2?", "max_tokens": 10}' \
+		-d '{"model": "groq-kimi-primary", "prompt": "Why the sky is blue?", "max_tokens": 10}' \
 		| jq -C '.'
 	@echo $(SEPARATOR)
 

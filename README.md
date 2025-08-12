@@ -27,11 +27,11 @@ graph TB
     LLMCall --> Providers
     
     subgraph "🔍 API-Level Caching"
-        Cache --> QdrantAPI[🗄️ Qdrant (Exact)]
+        Cache --> QdrantAPI[🗄️ Qdrant -Exact]
     end
     
     subgraph "🤖 LiteLLM Caching"
-        LiteLLMCache --> QdrantLiteLLM[🗄️ Qdrant (Semantic)]
+        LiteLLMCache --> QdrantLiteLLM[🗄️ Qdrant -Semantic]
     end
     
     subgraph "📊 Observability"
