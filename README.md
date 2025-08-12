@@ -17,19 +17,27 @@ A **production-ready LLMOps stack** with **semantic caching**, **multi-provider 
 graph TB
     Client[👤 Client] --> Auth[🔐 JWT Auth]
     Auth --> API[🚀 FastAPI App]
-    API --> Cache{🧠 Smart Cache}
+    API --> Cache{🧠 Exact Cache}
     Cache -->|Cache Miss| LiteLLM[🤖 LiteLLM Proxy]
     Cache -->|Cache Hit| Return[⚡ Cached Response]
     LiteLLM --> Providers[🌐 LLM Providers]
+    LiteLLM -->|Semantic Cache| LiteLLMCache{🧠 Semantic Cache}
+    LiteLLMCache -->|Cache Hit| LiteLLMCached[⚡ Cached Response]
+    LiteLLMCache -->|Cache Miss| LLMCall[📞 LLM Call]
+    LLMCall --> Providers
     
-    subgraph "🔍 Semantic Cache"
-        Cache --> TEI[📝 Text Embeddings]
-        Cache <--> Qdrant[🗄️ Vector Database]
+    subgraph "🔍 API-Level Caching"
+        Cache --> QdrantAPI[🗄️ Qdrant (Exact)]
+    end
+    
+    subgraph "🤖 LiteLLM Caching"
+        LiteLLMCache --> QdrantLiteLLM[🗄️ Qdrant (Semantic)]
     end
     
     subgraph "📊 Observability"
         API --> MLflow[📈 Experiment Tracking]
         API --> Logs[📋 Security Logs]
+        LiteLLM --> MLflow
     end
     
     subgraph "🌐 LLM Providers"
@@ -44,9 +52,10 @@ graph TB
 
 | Component | Purpose | Technology | Port |
 |-----------|---------|------------|------|
-| **FastAPI API** | Secure LLM gateway with caching | FastAPI + JWT | `:8000` |
-| **LiteLLM Proxy** | Multi-provider LLM routing | LiteLLM | `:8001` |
-| **Semantic Cache** | Vector-based response caching | Qdrant + TEI | `:6333` |
+| **FastAPI API** | Secure LLM gateway with exact caching | FastAPI + JWT | `:8000` |
+| **LiteLLM Proxy** | Multi-provider LLM routing + semantic caching | LiteLLM | `:8001` |
+| **Exact Cache** | Fast hash-based caching | Qdrant | `:6333` |
+| **Semantic Cache** | Vector-based caching (LiteLLM) | Qdrant | `:6333` |
 | **Text Embeddings** | Local embedding generation | HuggingFace TEI | `:8080` |
 | **Experiment Tracking** | LLM call monitoring | MLflow | `:5001` |
 
@@ -99,13 +108,22 @@ make -f Makefile.curl status
 
 ## 🧪 Testing the Stack
 
+### 🧠 Caching Architecture
+
+This stack now implements a **dual-layer caching system** for optimal performance:
+
+1. **Exact Cache (API-level)**: Fast hash-based caching for identical prompts
+2. **Semantic Cache (LiteLLM-level)**: Vector-based caching for similar prompts
+
+See [CACHE_ARCHITECTURE.md](CACHE_ARCHITECTURE.md) for detailed documentation.
+
 ### 🎯 Quick Tests
 
 ```bash
 # Test exact cache (API-level)
 make -f Makefile.curl test-exact-cache
 
-# Test semantic cache (Qdrant + TEI)
+# Test semantic cache (LiteLLM-level)
 make -f Makefile.curl test-semantic-cache
 
 # Comprehensive system test

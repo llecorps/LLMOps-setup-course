@@ -2,6 +2,6 @@
 Cache module for semantic and exact caching using Qdrant
 """
 
-from .semantic_cache import SemanticCache
+from .exact_cache import ExactCache
 
-__all__ = ["SemanticCache"]
+__all__ = ["ExactCache"]

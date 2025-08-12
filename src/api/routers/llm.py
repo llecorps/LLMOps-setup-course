@@ -9,8 +9,8 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, status, Depends
 from litellm import completion_cost
 
-# Import our semantic cache
-from cache.semantic_cache import SemanticCache
+# Import our exact cache
+from cache.exact_cache import ExactCache
 
 from models.llm_models import SecurePromptRequest, SecurePromptResponse, ModelsResponse
 from services.auth_service import verify_token
@@ -27,15 +27,11 @@ client = openai.OpenAI(
     api_key="dummy-key"  # LiteLLM handles the real API keys
 )
 
-# Initialize semantic cache
-cache = SemanticCache(
+# Initialize exact cache
+# Note: Only exact cache is managed locally, semantic cache is handled by LiteLLM
+cache = ExactCache(
     qdrant_url=settings.QDRANT_URL,
-    litellm_url=settings.LITELLM_URL,
-    exact_similarity_threshold=1.0,
-    semantic_similarity_threshold=0.70,  # Réduit temporairement pour test
-    embedding_dimension=384,  # all-MiniLM-L6-v2
     ttl_seconds=1800,
-    embedding_model="local-embed-model",
 )
 
 
@@ -81,10 +77,11 @@ async def generate_secure_prompt(
         }
         
         # Try exact cache first
-        cached_response = await cache.get_exact_cache(
+        cached_response = cache.get(
             prompt=full_prompt,
             model=request.model,
-            **cache_params
+            temperature=request.temperature,
+            max_tokens=request.max_tokens
         )
         
         if cached_response:
@@ -96,76 +93,52 @@ async def generate_secure_prompt(
             cost = cached_response["cost"]
             guardrails_triggered = cached_response.get("guardrails_triggered", [])
         else:
-            # Try semantic cache
-            semantic_result = await cache.get_semantic_cache(
+            # No exact cache hit, let LiteLLM handle semantic cache + LLM call
+            print("DEBUG: No exact cache hit, calling LiteLLM (semantic cache + LLM)")
+            response = client.chat.completions.create(**litellm_params)
+            
+            # Extract response data
+            response_text = response.choices[0].message.content
+            prompt_tokens = response.usage.prompt_tokens
+            completion_tokens = response.usage.completion_tokens
+            total_tokens = response.usage.total_tokens
+            
+            # Calculate cost
+            try:
+                # Try to get the underlying model from LiteLLM response
+                actual_model = response.model if hasattr(response, 'model') else request.model
+                cost = completion_cost(
+                    completion_response=response,
+                    model=actual_model
+                )
+            except Exception as e:
+                print(f"Warning: Could not calculate cost for {request.model}: {e}")
+                # Fallback cost calculation based on token usage
+                cost = (prompt_tokens * 0.00001) + (completion_tokens * 0.00002)
+                
+            # Check for triggered guardrails (outside of except block)
+            guardrails_triggered = []
+            if hasattr(response, 'guardrails_triggered'):
+                guardrails_triggered = response.guardrails_triggered
+            
+            # Store in exact cache (outside of except block)
+            response_data = {
+                "response": response_text,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
+                "cost": cost,
+                "guardrails_triggered": guardrails_triggered
+            }
+            
+            # Store in exact cache for future exact matches
+            cache.set(
                 prompt=full_prompt,
                 model=request.model,
-                **cache_params
+                response=response_data,
+                temperature=request.temperature,
+                max_tokens=request.max_tokens
             )
-            
-            if semantic_result:
-                cached_response, similarity_score = semantic_result
-                print(f"DEBUG: Semantic cache hit with similarity: {similarity_score}")
-                response_text = cached_response["response"]
-                prompt_tokens = cached_response["prompt_tokens"]
-                completion_tokens = cached_response["completion_tokens"]
-                total_tokens = cached_response["total_tokens"]
-                cost = cached_response["cost"]
-                guardrails_triggered = cached_response.get("guardrails_triggered", [])
-            else:
-                # No cache hit, make the LLM request via LiteLLM proxy
-                print("DEBUG: No cache hit, calling LLM")
-                response = client.chat.completions.create(**litellm_params)
-                
-                # Extract response data
-                response_text = response.choices[0].message.content
-                prompt_tokens = response.usage.prompt_tokens
-                completion_tokens = response.usage.completion_tokens
-                total_tokens = response.usage.total_tokens
-                
-                # Calculate cost
-                try:
-                    # Try to get the underlying model from LiteLLM response
-                    actual_model = response.model if hasattr(response, 'model') else request.model
-                    cost = completion_cost(
-                        completion_response=response,
-                        model=actual_model
-                    )
-                except Exception as e:
-                    print(f"Warning: Could not calculate cost for {request.model}: {e}")
-                    # Fallback cost calculation based on token usage
-                    cost = (prompt_tokens * 0.00001) + (completion_tokens * 0.00002)
-                
-                # Check for triggered guardrails
-                guardrails_triggered = []
-                if hasattr(response, 'guardrails_triggered'):
-                    guardrails_triggered = response.guardrails_triggered
-                
-                # Store in both caches
-                response_data = {
-                    "response": response_text,
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": total_tokens,
-                    "cost": cost,
-                    "guardrails_triggered": guardrails_triggered
-                }
-                
-                # Store in exact cache
-                await cache.set_exact_cache(
-                    prompt=full_prompt,
-                    model=request.model,
-                    response=response_data,
-                    **cache_params
-                )
-                
-                # Store in semantic cache
-                await cache.set_semantic_cache(
-                    prompt=full_prompt,
-                    model=request.model,
-                    response=response_data,
-                    **cache_params
-                )
         
         # Calculate metrics
         end_time = time.time()
@@ -178,30 +151,28 @@ async def generate_secure_prompt(
         
         if cached_response:
             cache_latency_ms = response_time * 1000  # Convert to milliseconds
-            if 'semantic_result' in locals() and semantic_result:
-                cache_type = "semantic"
-            else:
-                cache_type = "exact"
+            cache_type = "exact"
         
         # Trace in MLflow with cache information
         try:
+            tokens_dict = {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens
+            }
             mlflow_service.trace_llm_request(
                 prompt=request.prompt,
                 model=request.model,
                 response=response_text,
-                tokens={
-                    "prompt_tokens": prompt_tokens,
-                    "completion_tokens": completion_tokens,
-                    "total_tokens": total_tokens
-                },
+                tokens=tokens_dict,
                 cost=cost,
                 start_time=start_time,
                 cache_hit=cache_hit,
                 cache_latency_ms=cache_latency_ms,
                 cache_type=cache_type
             )
-        except Exception as trace_error:
-            print(f"Warning: Could not trace LLM request: {trace_error}")
+        except Exception as e:
+            print(f"Warning: Could not trace LLM request: {e}")
         
         # Guardrails are already handled in cache data or set above
         
@@ -260,7 +231,7 @@ async def clear_cache(
 ):
     """Clear cache collections."""
     try:
-        success = await cache.clear_cache(cache_type)
+        success = cache.clear_cache(cache_type)
         if success:
             return {
                 "status": "success",

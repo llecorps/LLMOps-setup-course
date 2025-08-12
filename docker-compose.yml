@@ -15,6 +15,18 @@ services:
     command: ["python", "/app/scripts/init_mlflow_experiments.py"]
     restart: "no"  # Run once and exit
 
+  # Qdrant collections initialization
+  qdrant-init:
+    image: curlimages/curl:8.4.0
+    depends_on:
+      - qdrant
+    volumes:
+      - ./scripts:/scripts
+    networks:
+      - llmops-network
+    command: ["sh", "/scripts/init-qdrant.sh"]
+    restart: "no"  # Run once and exit
+
   # FastAPI application
   api:
     build:
@@ -32,6 +44,7 @@ services:
       - mlflow
       - mlflow-init
       - qdrant
+      - qdrant-init
       - tei-embeddings
     volumes:
       - .:/app
@@ -101,6 +114,7 @@ services:
       - mlflow-init
       - tei-embeddings
       - qdrant
+      - qdrant-init
     # Health check
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
