@@ -7,9 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from config.settings import settings
 from config.lifespan import lifespan
 from middleware.security import security_middleware
+from middleware.metrics import metrics_middleware
 from routers.auth import router as auth_router
 from routers.llm import router as llm_router
 from routers.system import router as system_router
+from routers.monitoring import router as monitoring_router
 from utils.exceptions import validation_exception_handler
 
 
@@ -42,6 +44,9 @@ def create_app() -> FastAPI:
         allow_headers=settings.CORS_HEADERS,
     )
 
+    # Add metrics middleware FIRST (outer layer)
+    app.middleware("http")(metrics_middleware)
+    
     # Add security middleware
     app.middleware("http")(security_middleware)
 
@@ -80,5 +85,6 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(llm_router)
     app.include_router(system_router)
+    app.include_router(monitoring_router)
 
     return app
