@@ -9,9 +9,46 @@
 
 A **production-ready LLMOps stack** with **semantic caching**, **multi-provider LLM routing**, **security hardening**, **experiment tracking**, and **comprehensive monitoring**.
 
+## TL;DR
+
+- **Stack**: FastAPI (JWT) + LiteLLM Proxy + Qdrant + MLflow + TEI Embeddings
+- **Caching**: Dual-layer (Exact at API, Semantic via LiteLLM)
+- **Security**: Input validation, rate limiting, JWT, model/param guards
+- **Observability**: MLflow metrics, logs, cache hit ratios
+- **Run**: `cp .env.example .env && docker compose up -d --build && make -f Makefile.curl status`
+
+### Key Features
+
+- Smart dual-layer caching (exact + semantic)
+- Secure API gateway with JWT, rate limiting, and validation
+- Multi-provider routing with automatic failover
+- Full observability: MLflow metrics, logs, cache ratios
+- One-command local bring-up via Docker Compose
+
+## Table of Contents
+
+- [1. 🏗️ Architecture Overview](#1--architecture-overview)
+- [2. 🎬 Quick Start](#2--quick-start)
+  - [Prerequisites](#prerequisites)
+  - [Launch Stack](#launch-stack)
+  - [Access Points](#access-points)
+- [3. 🧪 Testing the Stack](#3--testing-the-stack)
+- [4. 🧠 Smart Caching System](#4--smart-caching-system)
+- [5. 🔒 Security Features](#5--security-features)
+- [6. 📊 Observability & Monitoring](#6--observability--monitoring)
+- [7. 🤖 LLM Models & Routing](#7--llm-models--routing)
+- [8. 📁 Project Structure](#8--project-structure)
+- [9. 🧹 Maintenance Commands](#9--maintenance-commands)
+- [10. 🎯 Custom Configuration](#10--custom-configuration)
+- [11. 🎯 Use Cases & Examples](#11--use-cases--examples)
+- [12. 🚀 Production Deployment](#12--production-deployment)
+- [13. 🆘 Troubleshooting](#13--troubleshooting)
+
 ---
 
-## 🏗️ Architecture Overview
+## 1. 🏗️ Architecture Overview
+
+This section gives a high-level view of how components interact: API, caching layers (exact + semantic), providers, and observability. Skim this to understand the overall data flow before deploying.
 
 ```mermaid
 graph TB
@@ -61,7 +98,9 @@ graph TB
 
 ---
 
-## 🎬 Quick Start
+## 2. 🎬 Quick Start
+
+Start here to run the stack locally. You'll configure environment variables, launch via Docker, and verify services with the provided Make targets.
 
 ### Prerequisites
 ```bash
@@ -106,7 +145,9 @@ make -f Makefile.curl status
 
 ---
 
-## 🧪 Testing the Stack
+## 3. 🧪 Testing the Stack
+
+Covers how to validate exact and semantic caching, run comprehensive tests, and benchmark performance—all via `Makefile.curl` helpers.
 
 ### 🧠 Caching Architecture
 
@@ -115,7 +156,7 @@ This stack now implements a **dual-layer caching system** for optimal performanc
 1. **Exact Cache (API-level)**: Fast hash-based caching for identical prompts
 2. **Semantic Cache (LiteLLM-level)**: Vector-based caching for similar prompts
 
-See [CACHE_ARCHITECTURE.md](CACHE_ARCHITECTURE.md) for detailed documentation.
+See [CACHE_ARCHITECTURE.md](./litellm/README.md) for detailed documentation.
 
 ### 🎯 Quick Tests
 
@@ -153,7 +194,9 @@ curl -X POST http://localhost:8000/llm/generate \
 
 ---
 
-## 🧠 Smart Caching System
+## 4. 🧠 Smart Caching System
+
+Explains the dual-layer caching design, expected latencies, example scenarios, and how to inspect and manage cache behavior.
 
 ### 💾 Dual Cache Architecture
 
@@ -194,7 +237,9 @@ make -f Makefile.curl test-cache-with-logs
 
 ---
 
-## 🔒 Security Features
+## 5. 🔒 Security Features
+
+Details layered protections (validation, rate limiting, auth, model/param guards) and how to test and observe security signals.
 
 ### 🛡️ Multi-Layer Protection
 
@@ -223,7 +268,9 @@ curl -s http://localhost:8000/system/security-metrics \
 
 ---
 
-## 📊 Observability & Monitoring
+## 6. 📊 Observability & Monitoring
+
+Shows what's tracked in MLflow, how to access dashboards, and quick health checks to ensure each service is operating correctly.
 
 ### 📈 MLflow Experiment Tracking
 
@@ -252,7 +299,9 @@ make -f Makefile.curl check-litellm   # LLM proxy
 
 ---
 
-## 🤖 LLM Models & Routing
+## 7. 🤖 LLM Models & Routing
+
+Lists available model routes, intended use cases, and the automatic failover strategy used by the proxy.
 
 ### 🎯 Available Models
 
@@ -278,7 +327,9 @@ Automatic failover: `Primary → Secondary → Fallback`
 
 ---
 
-## 📁 Project Structure
+## 8. 📁 Project Structure
+
+Directory walkthrough to help you locate API code, LiteLLM configuration, and the test suite fast.
 
 ```
 📦 LLMOps-setup-course/
@@ -302,34 +353,11 @@ Automatic failover: `Primary → Secondary → Fallback`
 │   ├── 🧪 test-comprehensive.sh    # Full system tests
 │   ├── ⚡ test-cache-performance.sh # Cache benchmarks
 │   └── 🔍 test-cache-with-logs.sh  # Cache behavior analysis
-│
-└── 📂 data/                        # Persistent Storage
-    ├── 🗄️ qdrant/                  # Vector database storage
-    ├── 📊 mlflow/                  # Experiment data
-    └── 📝 tei/                     # TEI model cache
 ```
 
 ---
 
-## 🛠️ Development Guide
-
-### 🔄 Local Development
-
-```bash
-# Start in development mode
-docker compose up -d --build
-
-# Watch logs
-docker compose logs -f api
-
-# Interactive shell access
-docker compose exec api bash
-
-# Run tests inside container
-docker compose exec api pytest /app/tests/ -v
-```
-
-### 🧹 Maintenance Commands
+## 9. 🧹 Maintenance Commands
 
 ```bash
 # Rebuild services
@@ -345,7 +373,7 @@ docker stats
 docker compose config > docker-compose-resolved.yml
 ```
 
-### 🎯 Custom Configuration
+## 10. 🎯 Custom Configuration
 
 **Environment Variables** (`.env`)
 ```bash
@@ -370,7 +398,7 @@ API_LOG_LEVEL=info
 
 ---
 
-## 🎯 Use Cases & Examples
+## 11. 🎯 Use Cases & Examples
 
 ### 💼 Production Scenarios
 
@@ -409,7 +437,9 @@ curl -X POST http://localhost:8000/llm/generate \
 
 ---
 
-## 🚀 Production Deployment
+## 12. 🚀 Production Deployment
+
+Production checklists and reference commands for Docker and Kubernetes, including health checks and scaling tips.
 
 ### 🏭 Production Checklist
 
@@ -445,7 +475,9 @@ kubectl scale deployment api --replicas=3
 
 ---
 
-## 🆘 Troubleshooting
+## 13. 🆘 Troubleshooting
+
+Common issues with quick diagnostics and fixes. Use this as a first stop before deep-diving into logs.
 
 ### 🔍 Common Issues
 
@@ -519,36 +551,8 @@ services:
 
 ---
 
-## 🤝 Contributing
-
-1. **Fork** the repository
-2. **Create** feature branch (`git checkout -b feature/amazing-feature`)
-3. **Test** your changes (`make -f Makefile.curl test-comprehensive`)
-4. **Commit** (`git commit -m 'Add amazing feature'`)
-5. **Push** (`git push origin feature/amazing-feature`)
-6. **Open** Pull Request
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
-## 🙋‍♂️ Support
-
-- 📖 **Documentation**: Check `/docs` endpoints
-- 🐛 **Issues**: GitHub Issues
-- 💬 **Discussions**: GitHub Discussions
-- 📧 **Contact**: [your-email@domain.com]
-
----
-
 <div align="center">
 
 **🚀 Almost Ready for Production • 🧠 Intelligent Caching • 🔒 Security First • 📊 Almost Full Observability**
-
-[Get Started](#-quick-start) • [View Tests](tests/README.md) • [Architecture](#%EF%B8%8F-architecture-overview)
 
 </div>
