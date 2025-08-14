@@ -3,6 +3,18 @@
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from jose import JWTError, jwt
+
+# Fix bcrypt compatibility issue with passlib
+try:
+    import bcrypt
+    if not hasattr(bcrypt, '__about__'):
+        # Create a mock __about__ object for bcrypt 4.0+ compatibility
+        class MockAbout:
+            __version__ = getattr(bcrypt, '__version__', 'unknown')
+        bcrypt.__about__ = MockAbout()
+except ImportError:
+    pass
+
 from passlib.context import CryptContext
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials

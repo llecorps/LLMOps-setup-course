@@ -46,7 +46,7 @@ async def get_prometheus_metrics():
     except Exception as e:
         logger.error(f"Critical error generating metrics: {e}", exc_info=True)
         # Return a basic error metric instead of failing completely
-        error_metric = f"# Error generating metrics\nllmops_metrics_error{{error="{type(e).__name__}"}} 1\n"
+        error_metric = f'# Error generating metrics\nllmops_metrics_error{{error="{type(e).__name__}"}} 1\n'
         return Response(error_metric, media_type=CONTENT_TYPE_LATEST)
 
 @router.get("/health")

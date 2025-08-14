@@ -15,13 +15,57 @@ API_BASE_URL = "http://api:8000"
 LITELLM_URL = "http://litellm:4000"
 QDRANT_URL = "http://qdrant:6333"
 
-# Test credentials (use your actual JWT token)
-JWT_TOKEN = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbiIsInJvbGUiOiJhZG1pbiIsImV4cCI6MTc1NDQ4MzA2N30.zUMhmURnyagAqJVfanpdHrkYv8M79rxPb18p_wh4g6E"  # Fresh admin token
+# Test credentials
+USERNAME = "admin"
+PASSWORD = "secret123"
 
-headers = {
-    "Authorization": f"Bearer {JWT_TOKEN}",
-    "Content-Type": "application/json"
-}
+# Global variable for token and headers
+JWT_TOKEN = None
+headers = {"Content-Type": "application/json"}
+
+async def get_auth_token():
+    """Get a fresh JWT token for authentication"""
+    global JWT_TOKEN, headers
+    
+    print("🔐 Getting authentication token...")
+    
+    login_data = {
+        "username": USERNAME,
+        "password": PASSWORD
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(
+                f"{API_BASE_URL}/auth/login",
+                json=login_data,
+                headers={"Content-Type": "application/json"},
+                timeout=10.0
+            )
+            
+            if response.status_code != 200:
+                print(f"❌ Authentication failed: {response.status_code} - {response.text}")
+                return False
+            
+            auth_data = response.json()
+            JWT_TOKEN = auth_data.get("access_token")
+            
+            if not JWT_TOKEN:
+                print("❌ No access token in response")
+                return False
+            
+            # Update global headers with the token
+            headers = {
+                "Authorization": f"Bearer {JWT_TOKEN}",
+                "Content-Type": "application/json"
+            }
+            
+            print("✅ Successfully authenticated")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Authentication error: {e}")
+            return False
 
 async def test_exact_cache():
     """Test exact cache functionality"""
@@ -210,13 +254,19 @@ async def main():
     print("🚀 Starting Cache System Tests")
     print("=" * 50)
     
-    # Health checks first
+    # Get authentication token first
+    auth_ok = await get_auth_token()
+    if not auth_ok:
+        print("\n❌ Authentication failed. Cannot proceed with tests.")
+        return False
+    
+    # Health checks
     qdrant_ok = await test_qdrant_health()
     litellm_ok = await test_litellm_health()
     
     if not (qdrant_ok and litellm_ok):
         print("\n❌ Prerequisites not met. Please ensure all services are running.")
-        return
+        return False
     
     # Cache tests
     exact_cache_ok = await test_exact_cache()
@@ -242,7 +292,7 @@ async def main():
     return all_passed
 
 if __name__ == "__main__":
-    print("Note: Make sure to update JWT_TOKEN variable with your actual token")
-    print("You can get a token by calling POST /auth/login with valid credentials\n")
+    print("🔐 This script will automatically authenticate using admin credentials")
+    print("📋 Make sure your Docker services are running before starting tests\n")
     
     asyncio.run(main())

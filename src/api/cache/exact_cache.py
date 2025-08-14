@@ -21,6 +21,9 @@ from qdrant_client.models import VectorParams, Distance, PointStruct
 
 logger = logging.getLogger(__name__)
 
+# Vector dimensions to match TEI embedding model (all-MiniLM-L6-v2)
+VECTOR_DIMENSIONS = 384
+
 
 class ExactCache:
     """Exact cache implementation using Qdrant for storage"""
@@ -43,11 +46,11 @@ class ExactCache:
             collection_names = [c.name for c in collections.collections]
             
             if self.collection_name not in collection_names:
-                # Create collection with minimal vector size (1) since we don't use embeddings
+                # Create collection with dimensions matching the TEI embedding model (all-MiniLM-L6-v2)
                 self.qdrant_client.create_collection(
                     collection_name=self.collection_name,
                     vectors_config=VectorParams(
-                        size=1,  # Minimal size since we don't use embeddings
+                        size=VECTOR_DIMENSIONS,  # Match TEI embedding dimensions for all-MiniLM-L6-v2
                         distance=Distance.COSINE
                     )
                 )
@@ -116,10 +119,10 @@ class ExactCache:
             # Create hash key
             cache_key = self._hash_prompt(prompt, model, **kwargs)
             
-            # Create point with minimal vector (we don't use it)
+            # Create point with zero vector to match collection configuration
             point = PointStruct(
                 id=cache_key,
-                vector=[0.0],  # Minimal vector
+                vector=[0.0] * VECTOR_DIMENSIONS,  # Zero vector matching TEI embedding dimensions
                 payload={
                     "prompt": prompt,
                     "model": model,
@@ -182,3 +185,26 @@ class ExactCache:
         except Exception as e:
             logger.error(f"Error clearing cache: {e}")
             return False
+    
+    def get_cache_stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics from Qdrant collection.
+        
+        Returns:
+            Dict containing cache statistics or error info
+        """
+        try:
+            # Get collection info from Qdrant
+            collection_info = self.qdrant_client.get_collection(self.collection_name)
+            
+            return {
+                "collection_name": self.collection_name,
+                "vectors_count": collection_info.vectors_count,
+                "indexed_vectors_count": collection_info.indexed_vectors_count, 
+                "points_count": collection_info.points_count,
+                "vector_dimensions": VECTOR_DIMENSIONS,
+                "ttl_seconds": self.ttl
+            }
+        except Exception as e:
+            logger.error(f"Error getting cache stats: {e}")
+            return {"error": str(e)}

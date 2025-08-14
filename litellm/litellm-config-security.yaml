@@ -5,10 +5,9 @@ model_list:
   # Primary models with security guardrails
   - model_name: groq-kimi-primary
     litellm_params:
-      model: moonshotai/kimi-k2-instruct
+      model: groq/moonshotai/kimi-k2-instruct
       api_key: os.environ/GROQ_API_KEY
-      api_base: https://api.groq.com/openai/v1
-      custom_llm_provider: openai
+
     litellm_settings:
       callbacks: ["detect_prompt_injection"]
       
