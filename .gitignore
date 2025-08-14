@@ -200,6 +200,7 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+.windsurf/
 
 # Marimo
 marimo/_static/
@@ -251,5 +252,3 @@ docs/_build/
 # System Files
 .DS_Store
 Thumbs.db
-
-.windsurf/
