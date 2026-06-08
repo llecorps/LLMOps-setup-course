@@ -35,10 +35,12 @@ def generate_with_groq(prompt, model="llama3-8b-8192"):
     )
     
     response_json = response.json()
+    if "choices" not in response_json:
+        raise ValueError(f"API error: {response_json}")
     return response_json["choices"][0]["message"]["content"]
 
 # Example usage
 if __name__ == "__main__":
     user_prompt = "Explain quantum computing in simple terms."
-    result = generate_with_groq(user_prompt, model="moonshotai/kimi-k2-instruct")
+    result = generate_with_groq(user_prompt, model="llama-3.1-8b-instant")
     print(result)

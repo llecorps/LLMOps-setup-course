@@ -12,7 +12,7 @@ model_list:
   # Backup Groq model with standard Groq provider
   - model_name: groq-llama-backup
     litellm_params:
-      model: groq/llama3-8b-8192
+      model: groq/llama-3.1-8b-instant
       api_key: os.environ/GROQ_API_KEY
       
   # Fallback models
